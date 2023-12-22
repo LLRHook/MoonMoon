@@ -1,5 +1,6 @@
 import tkinter as tk
 import random
+import math
 
 class GameApp:
     def __init__(self, root):
@@ -7,7 +8,10 @@ class GameApp:
         self.canvas = tk.Canvas(root, width=400, height=300)
         self.canvas.pack()
 
-        self.player = self.canvas.create_rectangle(50, 50, 100, 100, fill="blue")
+        self.player = self.canvas.create_polygon(75, 50, 50, 100, 100, 100, outline="black", fill="blue")
+        self.player_angle = 0  # Initial angle of the player
+        self.player_speed = 10  # Speed of the player
+
         self.enemies = []
         self.bullets = []
 
@@ -21,15 +25,33 @@ class GameApp:
         self.canvas.bind_all('<KeyPress-Right>', self.move_player)
         self.canvas.bind_all('<space>', self.shoot_bullet)
 
+    def rotate_polygon(self, polygon, angle, px, py):
+        coords = self.canvas.coords(polygon)
+        new_coords = []
+        for i in range(0, len(coords), 2):
+            x, y = coords[i], coords[i + 1]
+            new_x = ((x - px) * math.cos(angle)) - ((y - py) * math.sin(angle)) + px
+            new_y = ((x - px) * math.sin(angle)) + ((y - py) * math.cos(angle)) + py
+            new_coords.extend([new_x, new_y])
+        self.canvas.coords(polygon, new_coords)
+
     def move_player(self, event):
         if event.keysym == 'Up':
-            self.canvas.move(self.player, 0, -10)
-        elif event.keysym == 'Down':
-            self.canvas.move(self.player, 0, 10)
+            dx = self.player_speed * math.cos(math.radians(self.player_angle))
+            dy = -self.player_speed * math.sin(math.radians(self.player_angle))
+            self.canvas.move(self.player, dx, dy)
         elif event.keysym == 'Left':
-            self.canvas.move(self.player, -10, 0)
+            self.player_angle = (self.player_angle - 10) % 360
+            self.rotate_player()
         elif event.keysym == 'Right':
-            self.canvas.move(self.player, 10, 0)
+            self.player_angle = (self.player_angle + 10) % 360
+            self.rotate_player()
+
+    def rotate_player(self):
+        coords = self.canvas.coords(self.player)
+        center_x = (coords[0] + coords[4]) / 2
+        center_y = (coords[1] + coords[5]) / 2
+        self.rotate_polygon(self.player, math.radians(-10), center_x, center_y)
 
     def spawn_enemy(self):
         x1 = random.randint(50, 350)
@@ -39,8 +61,10 @@ class GameApp:
         self.root.after(2000, self.spawn_enemy)
 
     def shoot_bullet(self, event):
-        x1, y1, x2, y2 = self.canvas.coords(self.player)
-        bullet = self.canvas.create_oval(x1+20, y1-10, x2-20, y1, fill="yellow")
+        coords = self.canvas.coords(self.player)
+        tip_x = coords[0]
+        tip_y = coords[1]
+        bullet = self.canvas.create_oval(tip_x-5, tip_y-10, tip_x+5, tip_y, fill="yellow")
         self.bullets.append(bullet)
         self.move_bullet(bullet)
 
